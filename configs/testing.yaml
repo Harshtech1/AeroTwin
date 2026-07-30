@@ -1,0 +1,17 @@
+# AeroTwin Testing Configuration
+app:
+  name: "AeroTwin"
+  env: "testing"
+  debug: true
+  api_prefix: "/api"
+
+database:
+  url: "postgresql://postgres:postgres@localhost:5432/aerotwin_test"
+
+ai:
+  openai_api_key: ""
+  gemini_api_key: ""
+
+maps:
+  cesium_ion_token: ""
+  mapbox_access_token: ""

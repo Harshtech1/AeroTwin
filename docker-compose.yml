@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Database Service (PostgreSQL)
+  db:
+    image: postgres:16-alpine
+    container_name: aerotwin-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aerotwin_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Backend Service (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: aerotwin-backend
+    restart: always
+    volumes:
+      - ./backend:/workspace/backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-aerotwin_dev}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CESIUM_ION_TOKEN=${CESIUM_ION_TOKEN}
+      - MAPBOX_ACCESS_TOKEN=${MAPBOX_ACCESS_TOKEN}
+    depends_on:
+      - db
+
+  # Frontend Service (Vite + React)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    container_name: aerotwin-frontend
+    restart: always
+    volumes:
+      - ./frontend:/workspace/frontend
+      # Avoid overwriting node_modules inside container if local directory has none
+      - /workspace/frontend/node_modules
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    environment:
+      - VITE_API_URL=http://localhost:${BACKEND_PORT:-8000}
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
