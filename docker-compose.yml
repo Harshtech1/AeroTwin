@@ -1,4 +1,6 @@
-version: '3.8'
+# AeroTwin Docker Compose
+# Note: 'version' key removed — deprecated in Compose V2+
+# DATABASE_URL uses postgresql+asyncpg:// for SQLAlchemy 2.x async engine
 
 services:
   # Database Service (PostgreSQL)
@@ -14,6 +16,11 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Backend Service (FastAPI)
   backend:
@@ -29,13 +36,15 @@ services:
     environment:
       - ENVIRONMENT=development
       - DEBUG=true
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-aerotwin_dev}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - CESIUM_ION_TOKEN=${CESIUM_ION_TOKEN}
-      - MAPBOX_ACCESS_TOKEN=${MAPBOX_ACCESS_TOKEN}
+      # asyncpg driver required for SQLAlchemy 2.x async engine
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-aerotwin_dev}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - CESIUM_ION_TOKEN=${CESIUM_ION_TOKEN:-}
+      - MAPBOX_ACCESS_TOKEN=${MAPBOX_ACCESS_TOKEN:-}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   # Frontend Service (Vite + React)
   frontend:
@@ -46,7 +55,6 @@ services:
     restart: always
     volumes:
       - ./frontend:/workspace/frontend
-      # Avoid overwriting node_modules inside container if local directory has none
       - /workspace/frontend/node_modules
     ports:
       - "${FRONTEND_PORT:-5173}:5173"

@@ -3,10 +3,10 @@ app:
   name: "AeroTwin"
   env: "testing"
   debug: true
-  api_prefix: "/api"
+  api_prefix: "/api/v1"
 
 database:
-  url: "postgresql://postgres:postgres@localhost:5432/aerotwin_test"
+  url: "postgresql+asyncpg://postgres:postgres@localhost:5432/aerotwin_test"
 
 ai:
   openai_api_key: ""
