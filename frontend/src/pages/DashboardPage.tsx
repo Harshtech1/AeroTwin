@@ -1,0 +1,28 @@
+import { Badge } from '../components/ui/Badge'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
+import { Icon, type IconName } from '../components/ui/Icon'
+
+const stats: { label: string; value: string; change: string; icon: IconName; color: string }[] = [
+  { label: 'Total flights', value: '24', change: '+3 this week', icon: 'plane', color: 'bg-blue-50 text-blue-600' }, { label: 'Processing', value: '03', change: '2 nearly complete', icon: 'clock', color: 'bg-amber-50 text-amber-600' }, { label: 'Reconstructed', value: '18', change: '75% success rate', icon: 'check', color: 'bg-emerald-50 text-emerald-600' }, { label: 'Needs review', value: '03', change: '1 high priority', icon: 'alert', color: 'bg-rose-50 text-rose-600' },
+]
+const flights = [
+  { code: 'AT-2847', route: 'SFO → JFK', aircraft: 'Boeing 787-9', time: 'Today, 09:42', status: 'Reconstructed', tone: 'success' as const, progress: 100 },
+  { code: 'AT-2846', route: 'LHR → DXB', aircraft: 'Airbus A350', time: 'Today, 08:15', status: 'Processing', tone: 'warning' as const, progress: 68 },
+  { code: 'AT-2845', route: 'SIN → SYD', aircraft: 'Boeing 777-300ER', time: 'Yesterday, 22:08', status: 'Reconstructed', tone: 'success' as const, progress: 100 },
+  { code: 'AT-2844', route: 'CDG → YUL', aircraft: 'Airbus A330', time: 'Yesterday, 17:31', status: 'Needs review', tone: 'neutral' as const, progress: 92 },
+]
+
+export function DashboardPage() {
+  return <div className="space-y-7">
+    <section className="animate-enter flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="mb-1 text-sm font-semibold text-brand">Friday, August 7</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Welcome back, Alex</h1><p className="mt-2 text-sm text-slate-500">Here’s what’s happening across your flight workspace.</p></div><Button className="self-start sm:hidden"><Icon name="plus" className="size-4" />New flight</Button></section>
+    <section aria-label="Flight statistics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{stats.map((stat, i) => <Card key={stat.label} style={{ animationDelay: `${i * 70}ms` }} className="animate-enter p-5"><div className="flex items-start justify-between"><div><p className="text-sm font-medium text-slate-500">{stat.label}</p><p className="mt-2 text-3xl font-bold tracking-tight">{stat.value}</p></div><span className={`grid size-10 place-items-center rounded-xl ${stat.color}`}><Icon name={stat.icon} className="size-5" /></span></div><p className="mt-4 text-xs font-medium text-slate-400">{stat.change}</p></Card>)}</section>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,.75fr)]">
+      <Card className="animate-enter overflow-hidden" style={{ animationDelay: '220ms' }}><div className="flex items-center justify-between border-b border-slate-100 p-5 sm:p-6"><div><h2 className="font-bold">Recent flights</h2><p className="mt-1 text-xs text-slate-400">Latest activity in your workspace</p></div><Button variant="ghost">View all <Icon name="arrow" className="size-4" /></Button></div><div className="divide-y divide-slate-100">{flights.map(flight => <button key={flight.code} className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50 sm:gap-4 sm:px-6"><span className="grid size-10 place-items-center rounded-xl bg-slate-100 text-slate-500"><Icon name="plane" className="size-[18px]" /></span><span className="min-w-0"><span className="flex items-center gap-2"><strong className="text-sm">{flight.code}</strong><span className="truncate text-xs text-slate-400">{flight.route}</span></span><span className="mt-1 block truncate text-xs text-slate-400">{flight.aircraft} · {flight.time}</span></span><span className="hidden sm:block"><Badge tone={flight.tone}>{flight.status}</Badge>{flight.progress < 100 && <span className="mt-2 block h-1 w-20 overflow-hidden rounded-full bg-slate-100"><span style={{ width: `${flight.progress}%` }} className="block h-full rounded-full bg-brand" /></span>}</span><Icon name="chevron" className="size-4 text-slate-300 sm:hidden" /></button>)}</div></Card>
+      <div className="space-y-6">
+        <Card className="animate-enter overflow-hidden bg-slate-950 p-6 text-white" style={{ animationDelay: '280ms' }}><div className="grid size-11 place-items-center rounded-2xl bg-blue-500/20 text-blue-300"><Icon name="sparkles" className="size-5" /></div><p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-blue-300">AeroTwin insight</p><h2 className="mt-2 text-xl font-bold leading-snug">Your reconstruction quality is improving.</h2><p className="mt-3 text-sm leading-6 text-slate-400">Average confidence increased by 8.4% over the past 30 days.</p><button className="mt-5 flex items-center gap-2 text-sm font-semibold text-white">Explore insights <Icon name="arrow" className="size-4" /></button><div className="-mb-16 ml-auto mt-2 size-32 rounded-full bg-blue-600/20 blur-2xl" /></Card>
+        <Card className="animate-enter p-5" style={{ animationDelay: '340ms' }}><div className="flex items-center justify-between"><div><h2 className="font-bold">Storage</h2><p className="mt-1 text-xs text-slate-400">Workspace usage</p></div><span className="text-sm font-bold">68%</span></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full w-[68%] rounded-full bg-brand" /></div><div className="mt-3 flex justify-between text-xs text-slate-400"><span>6.8 GB used</span><span>10 GB total</span></div></Card>
+      </div>
+    </div>
+  </div>
+}
