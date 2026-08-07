@@ -65,3 +65,28 @@ class ServiceUnavailableError(AeroTwinError):
     status_code = 503
     error_code = "SERVICE_UNAVAILABLE"
     message = "A required service is temporarily unavailable."
+
+
+class DatabaseError(AeroTwinError):
+    """Raised when a persistence operation fails."""
+
+    status_code = 503
+    error_code = "DATABASE_ERROR"
+    message = "The database operation could not be completed."
+
+
+class ExternalServiceError(AeroTwinError):
+    """Raised when communication with an external dependency fails."""
+
+    status_code = 502
+    error_code = "EXTERNAL_SERVICE_ERROR"
+    message = "An external service operation failed."
+
+
+# Explicit exception names requested by the public infrastructure contract.
+BaseException = AeroTwinError
+ValidationException = ValidationError
+NotFoundException = NotFoundError
+ConflictException = ConflictError
+DatabaseException = DatabaseError
+ExternalServiceException = ExternalServiceError

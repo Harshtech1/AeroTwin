@@ -22,9 +22,12 @@ import structlog
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.routers import api_router
+from app.api.v1.endpoints import health
 from app.config.settings import settings
 from app.constants.application import DESCRIPTION, PROJECT_NAME, VERSION
 from app.core.logging import setup_logging
@@ -35,8 +38,11 @@ from app.middleware.exception_handler import (
     unhandled_exception_handler,
     validation_exception_handler,
 )
+from app.middleware.observability import ObservabilityMiddleware
 from app.middleware.request_id import RequestIDMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
 from app.shared.exceptions.base import AeroTwinError
+from app.shared.responses.envelope import success
 
 logger = structlog.get_logger(__name__)
 
@@ -57,7 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         environment=settings.ENVIRONMENT,
         debug=settings.DEBUG,
     )
-    await init_db()
+    init_db()
 
     yield
 
@@ -76,7 +82,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=PROJECT_NAME,
         description=DESCRIPTION,
-        version=VERSION,
+        version=settings.VERSION,
         # Only expose OpenAPI docs in non-production environments.
         openapi_url=(
             f"{settings.API_V1_STR}/openapi.json"
@@ -91,11 +97,16 @@ def create_app() -> FastAPI:
     # ── CORS ─────────────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
+        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.add_middleware(GZipMiddleware, minimum_size=settings.GZIP_MINIMUM_SIZE)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.TRUSTED_HOSTS)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(ObservabilityMiddleware)
 
     # ── Request ID (registered after CORS, before route handlers) ────────────
     app.add_middleware(RequestIDMiddleware)
@@ -108,11 +119,14 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(api_router, prefix=settings.API_V1_STR)
+    app.include_router(health.router)
 
     # ── Root endpoint (framework-level liveness probe, not versioned) ─────────
     @app.get("/", tags=["root"], include_in_schema=False)
-    async def root() -> dict:
-        return {"project": PROJECT_NAME, "status": "running", "version": VERSION}
+    async def root() -> dict[str, object]:
+        return success(
+            {"project": PROJECT_NAME, "status": "running", "version": settings.VERSION}
+        )
 
     return app
 

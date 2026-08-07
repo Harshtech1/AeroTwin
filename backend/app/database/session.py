@@ -1,27 +1,13 @@
-"""
-Async database session management for AeroTwin.
-
-Design: engine and session factory are module-level variables initialised
-by init_db() rather than at import time. This:
-  - Prevents accidental DB connections during import / testing.
-  - Allows test suites to call init_db() with a lightweight test URL.
-  - Keeps the lifespan handler as the single source of DB initialisation.
-
-Usage:
-    # In main.py lifespan (startup):
-    from app.database.session import init_db
-    await init_db()
-
-    # In FastAPI dependencies:
-    from app.database.session import get_db
-    async def some_endpoint(db: AsyncSession = Depends(get_db)): ...
-"""
+"""Async SQLAlchemy engine, transaction, and request-session lifecycle."""
 
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 
+import structlog
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
@@ -30,74 +16,65 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config.settings import settings
 
-# ---------------------------------------------------------------------------
-# Module-level state — initialised lazily by init_db()
-# ---------------------------------------------------------------------------
-_engine = None
+logger = structlog.get_logger(__name__)
+_engine: AsyncEngine | None = None
 _AsyncSessionLocal: async_sessionmaker[AsyncSession] | None = None
 
 
 class Base(DeclarativeBase):
-    """Declarative base for all SQLAlchemy ORM models."""
-
-    pass
+    """Declarative base for future ORM models."""
 
 
-async def init_db() -> None:
-    """
-    Initialise the async engine and session factory.
-
-    Called once during the application lifespan startup.
-    Skipped safely when DATABASE_URL is not configured (e.g., during tests
-    that do not require a real database).
-    """
+def init_db(database_url: str | None = None) -> None:
+    """Create the engine without opening a connection."""
     global _engine, _AsyncSessionLocal
-
-    if not settings.DATABASE_URL:
+    url = database_url if database_url is not None else settings.DATABASE_URL
+    if not url:
+        logger.info("database_disabled")
         return
-
+    if _engine is not None:
+        return
     _engine = create_async_engine(
-        settings.DATABASE_URL,
+        url,
         echo=settings.DEBUG,
         pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=10,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_timeout=settings.DB_POOL_TIMEOUT,
+        pool_recycle=settings.DB_POOL_RECYCLE,
     )
-    _AsyncSessionLocal = async_sessionmaker(
-        bind=_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
+    _AsyncSessionLocal = async_sessionmaker(_engine, expire_on_commit=False)
 
-    # Verify connectivity by running a lightweight query.
+
+async def check_db() -> bool:
+    """Return whether the configured database accepts a trivial query."""
+    if _AsyncSessionLocal is None:
+        return False
     try:
         async with _AsyncSessionLocal() as session:
-            from sqlalchemy import text
-
             await session.execute(text("SELECT 1"))
-    except Exception:
-        pass  # Non-critical at startup; service can degrade gracefully.
+        return True
+    except Exception as exc:
+        logger.warning("database_health_check_failed", exception=str(exc))
+        return False
 
 
 async def close_db() -> None:
-    """Dispose the engine connection pool on application shutdown."""
+    """Dispose all pooled connections and reset module state."""
+    global _engine, _AsyncSessionLocal
     if _engine is not None:
         await _engine.dispose()
+    _engine = None
+    _AsyncSessionLocal = None
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    FastAPI dependency that yields an AsyncSession per request.
-
-    Raises:
-        RuntimeError: If init_db() has not been called or DATABASE_URL is
-            not configured.
-    """
+    """Yield one transactional session and always close it."""
     if _AsyncSessionLocal is None:
-        raise RuntimeError(
-            "Database is not initialised. "
-            "Ensure init_db() is called during application startup and "
-            "that DATABASE_URL is configured."
-        )
+        raise RuntimeError("Database is not configured")
     async with _AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise

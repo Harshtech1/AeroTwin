@@ -4,14 +4,16 @@ app:
   env: "production"
   debug: false
   api_prefix: "/api/v1"
+  version: "0.1.0"
 
 database:
-  url: "postgresql+asyncpg://postgres:postgres@localhost:5432/aerotwin_prod"
+  url: null # Required at runtime through DATABASE_URL or a mounted secret.
+  pool_size: 10
+  max_overflow: 20
+  pool_timeout: 30
+  pool_recycle: 1800
 
-ai:
-  openai_api_key: ""
-  gemini_api_key: ""
-
-maps:
-  cesium_ion_token: ""
-  mapbox_access_token: ""
+http:
+  cors_origins: ["https://aerotwin.example.com"]
+  trusted_hosts: ["aerotwin.example.com"]
+  gzip_minimum_size: 1000

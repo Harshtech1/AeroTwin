@@ -36,13 +36,33 @@ class ErrorDetail(BaseModel):
     details: Any | None = Field(None, description="Optional additional context.")
 
 
+class ResponseMeta(BaseModel):
+    """Optional response metadata used for tracing and pagination."""
+
+    request_id: str | None = None
+    page: int | None = None
+    page_size: int | None = None
+    total: int | None = None
+    total_pages: int | None = None
+
+
+class PaginationParams(BaseModel):
+    """Validated offset pagination input shared by list endpoints."""
+
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.page_size
+
+
 class SuccessResponse[T](BaseModel):
     """Envelope for successful API responses."""
 
     success: bool = True
     data: T | None = None
-    message: str | None = None
-    request_id: str | None = None
+    meta: ResponseMeta | None = None
 
 
 class ErrorResponse(BaseModel):
@@ -50,18 +70,21 @@ class ErrorResponse(BaseModel):
 
     success: bool = False
     error: ErrorDetail
-    request_id: str | None = None
+    meta: ResponseMeta | None = None
 
 
 def success(
     data: Any = None,
     message: str | None = None,
     request_id: str | None = None,
-) -> dict:
+    meta: ResponseMeta | None = None,
+) -> dict[str, Any]:
     """Build a standardized success response dict."""
-    return SuccessResponse(
-        data=data, message=message, request_id=request_id
-    ).model_dump(exclude_none=True)
+    del message  # Kept as a compatibility parameter during envelope migration.
+    response_meta = meta or (
+        ResponseMeta(request_id=request_id) if request_id else None
+    )
+    return SuccessResponse(data=data, meta=response_meta).model_dump(exclude_none=True)
 
 
 def error(
@@ -69,9 +92,9 @@ def error(
     message: str,
     details: Any = None,
     request_id: str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Build a standardized error response dict."""
     return ErrorResponse(
         error=ErrorDetail(code=code, message=message, details=details),
-        request_id=request_id,
+        meta=ResponseMeta(request_id=request_id) if request_id else None,
     ).model_dump(exclude_none=True)
