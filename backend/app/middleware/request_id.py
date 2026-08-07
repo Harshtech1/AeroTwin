@@ -51,8 +51,9 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             path=request.url.path,
         )
 
-        response: Response = await call_next(request)
-
-        # Propagate the request ID back to the caller.
-        response.headers[HEADER_REQUEST_ID] = request_id
-        return response
+        try:
+            response: Response = await call_next(request)
+            response.headers[HEADER_REQUEST_ID] = request_id
+            return response
+        finally:
+            structlog.contextvars.clear_contextvars()

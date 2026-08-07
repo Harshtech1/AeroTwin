@@ -4,14 +4,16 @@ app:
   env: "development"
   debug: true
   api_prefix: "/api/v1"
+  version: "0.1.0"
 
 database:
   url: "postgresql+asyncpg://postgres:postgres@localhost:5432/aerotwin_dev"
+  pool_size: 5
+  max_overflow: 10
+  pool_timeout: 30
+  pool_recycle: 1800
 
-ai:
-  openai_api_key: ""
-  gemini_api_key: ""
-
-maps:
-  cesium_ion_token: ""
-  mapbox_access_token: ""
+http:
+  cors_origins: ["*"]
+  trusted_hosts: ["*"]
+  gzip_minimum_size: 1000
