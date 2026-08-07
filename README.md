@@ -125,7 +125,7 @@ AeroTwin/
 
 - **Backend:** Python 3.12, FastAPI, SQLAlchemy, Alembic, PostgreSQL, Pydantic Settings, Uvicorn
 - **Frontend:** React, TypeScript, Vite, TailwindCSS (v4)
-- **AI:** LangGraph (future), OpenAI / Gemini API integration, OCR (Tesseract / Vision LLMs)
+- **AI:** LangGraph (future), managed OpenAI / Gemini API integration, cloud document OCR and vision services
 - **Deployment:** Docker, Docker Compose
 - **Version Control:** Git
 
@@ -134,6 +134,10 @@ AeroTwin/
 ## Development Roadmap
 
 For detail, see the [Sprint Status](#project-status). The roadmap focuses on establishing a robust backend repository pattern, a React feature modular frontend, high-fidelity spatial interpolation, and multi-modal AI narration pipelines.
+
+The research basis for the planned AI modules—including OCR, boarding-pass
+extraction, speech recognition, LangGraph, narration, vision, and embeddings—is
+documented in the [AI capability evaluation](docs/research/ai-capability-evaluation.md).
 
 AeroTwin's future digital twin core is centered on a **Simulation Engine** comprised of:
 1. **Replay Engine:** Chronological trajectory replay using spatiotemporal interpolation.
